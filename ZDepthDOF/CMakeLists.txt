@@ -4,6 +4,9 @@ project(ZDepthDOF VERSION 1.0)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Static runtime — no vcruntime140.dll / msvcp140.dll dependency
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
+
 # ── Plugin DLL ─────────────────────────────────────────────────────────────
 add_library(ZDepthDOF SHARED src/ZDepthDOF.cpp)
 
