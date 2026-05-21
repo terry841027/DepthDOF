@@ -53,10 +53,16 @@ struct PluginInfoStruct {
     uint8_t  PluginName[16];
     uint32_t PluginType;
     uint32_t PluginVersion;
-    uint8_t  Description[64];
-    uint8_t  About[64];
+    char     Description[64];   // char (not uint8_t) so string literals work
+    char     About[64];
     uint32_t FreeFrameExtendedDataSize;
     void*    FreeFrameExtendedDataBlock;
+};
+
+// 64-bit safe value type — pointers are wider than uint32_t on x64
+union FFMixed {
+    uint32_t UIntValue;
+    void*    PointerValue;
 };
 
 struct FFGLViewportStruct {
