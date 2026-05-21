@@ -13,16 +13,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Configure
-        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+        run: cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
         working-directory: ZDepthDOF
 
       - name: Build
-        run: cmake --build build --config Release
+        run: cmake --build build
         working-directory: ZDepthDOF
 
       - name: Upload DLL
         uses: actions/upload-artifact@v4
         with:
           name: ZDepthDOF-dll
-          path: ZDepthDOF/build/Release/ZDepthDOF.dll
+          path: ZDepthDOF/build/ZDepthDOF.dll
