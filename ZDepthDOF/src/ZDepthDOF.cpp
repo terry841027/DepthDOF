@@ -226,7 +226,7 @@ struct ZDepthDOF {
         gl_Uniform1f(uQuality,    p[P_QUALITY]);
         gl_Uniform1f(uShowDepth,  p[P_SHOW_DEPTH]);
 
-        glActiveTexture(GL_TEXTURE0);  // GL_TEXTURE0 is standard; use gl_ActiveTexture for safety
+        gl_ActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, tex->Handle);
 
         gl_BindVertexArray(vao);
@@ -254,100 +254,100 @@ static PluginInfoStruct s_info = {
     {'Z','-','D','e','p','t','h',' ','D','O','F',0,0,0,0,0},
     FF_EFFECT,
     0x00010000,
-    "Z-Depth Depth of Field. Vertical + luma depth proxy, bokeh blur.",
+    "Z-Depth DOF: vertical+luma depth proxy, bokeh blur.",
     "custom",
     0, nullptr
 };
 
 // ── plugMain — the single DLL export ──────────────────────────────────────
+// FFMixed lets us handle both 32-bit values and 64-bit pointers on x64.
+static FFMixed MixUInt(uint32_t v) { FFMixed r; r.UIntValue    = v;  return r; }
+static FFMixed MixPtr (void*    p) { FFMixed r; r.PointerValue = p;  return r; }
+
 extern "C" __declspec(dllexport)
-uint32_t __stdcall plugMain(uint32_t code, uint32_t inputValue) {
+FFMixed __stdcall plugMain(uint32_t code, FFMixed input) {
 
     switch (code) {
 
-    // ── Global queries ─────────────────────────────────────────────────────
-    case FF_GETINFO:
-        return (uint32_t)(uintptr_t)&s_info;
-
-    case FF_GETPARAMETERCOUNT:
-        return NUM_PARAMS;
+    // ── Global queries (input is a plain uint32) ───────────────────────────
+    case FF_GETINFO:           return MixPtr(&s_info);
+    case FF_GETPARAMETERCOUNT: return MixUInt(NUM_PARAMS);
 
     case FF_GETPARAMETERNAME:
-        return (inputValue < NUM_PARAMS)
-            ? (uint32_t)(uintptr_t)s_names[inputValue] : FF_FAIL;
+        return (input.UIntValue < NUM_PARAMS)
+            ? MixPtr((void*)s_names[input.UIntValue]) : MixUInt(FF_FAIL);
 
     case FF_GETPARAMETERDEFAULT: {
-        if (inputValue >= NUM_PARAMS) return FF_FAIL;
-        uint32_t r; memcpy(&r, &s_defaults[inputValue], 4); return r;
+        if (input.UIntValue >= NUM_PARAMS) return MixUInt(FF_FAIL);
+        uint32_t r; memcpy(&r, &s_defaults[input.UIntValue], 4);
+        return MixUInt(r);
     }
-
     case FF_GETPARAMETERTYPE:
-        return (inputValue < NUM_PARAMS) ? s_types[inputValue] : FF_FAIL;
+        return (input.UIntValue < NUM_PARAMS)
+            ? MixUInt(s_types[input.UIntValue]) : MixUInt(FF_FAIL);
 
     case FF_GETPLUGINCAPS:
-        if (inputValue == FF_CAP_PROCESSOPENGL) return FF_SUPPORTED;
-        if (inputValue == FF_CAP_SETTIME)       return FF_NOTSUPPORTED;
-        return FF_UNSUPPORTED;
+        if (input.UIntValue == FF_CAP_PROCESSOPENGL) return MixUInt(FF_SUPPORTED);
+        if (input.UIntValue == FF_CAP_SETTIME)       return MixUInt(FF_NOTSUPPORTED);
+        return MixUInt(FF_UNSUPPORTED);
 
-    case FF_INITIALISE:   // legacy no-op for FFGL 2.x
+    case FF_INITIALISE:
     case FF_DEINITIALISE:
-        return FF_SUCCESS;
+        return MixUInt(FF_SUCCESS);
 
     // ── Instance lifecycle ─────────────────────────────────────────────────
     case FF_INITIALISE_V2: {
-        // Find a free slot
         uint32_t slot = 0;
-        for (uint32_t i = 0; i < 16; i++) {
-            if (!g_inst[i]) { slot = i + 1; break; }
-        }
-        if (!slot) return FF_FAIL;
+        for (uint32_t i = 0; i < 16; i++) { if (!g_inst[i]) { slot = i+1; break; } }
+        if (!slot) return MixUInt(FF_FAIL);
 
         auto* inst = new ZDepthDOF();
-        auto* vp   = reinterpret_cast<FFGLViewportStruct*>(inputValue);
-        if (inst->InitGL(vp) != FF_SUCCESS) { delete inst; return FF_FAIL; }
+        auto* vp   = static_cast<FFGLViewportStruct*>(input.PointerValue);
+        if (inst->InitGL(vp) != FF_SUCCESS) { delete inst; return MixUInt(FF_FAIL); }
 
         g_inst[slot - 1] = inst;
-        return slot;
+        return MixUInt(slot);
     }
 
     case FF_DEINITIALISE_V2: {
-        // inputValue IS the instance handle (direct DWORD)
-        ZDepthDOF* inst = FindInst(inputValue);
-        if (!inst) return FF_FAIL;
+        uint32_t id = input.UIntValue;
+        ZDepthDOF* inst = FindInst(id);
+        if (!inst) return MixUInt(FF_FAIL);
         inst->DeInitGL();
         delete inst;
-        g_inst[inputValue - 1] = nullptr;
-        return FF_SUCCESS;
+        g_inst[id - 1] = nullptr;
+        return MixUInt(FF_SUCCESS);
     }
 
-    // ── Per-instance calls — inputValue → InstanceHandledDataStruct* ───────
+    // ── Per-instance calls (input.PointerValue → InstanceHandledDataStruct) ─
     case FF_PROCESSOPENGL: {
-        auto* ihd  = reinterpret_cast<InstanceHandledDataStruct*>(inputValue);
+        auto* ihd  = static_cast<InstanceHandledDataStruct*>(input.PointerValue);
         ZDepthDOF* inst = FindInst(ihd->instanceID);
-        if (!inst) return FF_FAIL;
-        return inst->Process(reinterpret_cast<ProcessOpenGLStruct*>(ihd->dataPointer));
+        if (!inst) return MixUInt(FF_FAIL);
+        return MixUInt(inst->Process(static_cast<ProcessOpenGLStruct*>(ihd->dataPointer)));
     }
 
     case FF_SETPARAMETER: {
-        auto* ihd = reinterpret_cast<InstanceHandledDataStruct*>(inputValue);
+        auto* ihd = static_cast<InstanceHandledDataStruct*>(input.PointerValue);
         ZDepthDOF* inst = FindInst(ihd->instanceID);
-        if (!inst) return FF_FAIL;
-        auto* sp = reinterpret_cast<SetParameterStruct*>(ihd->dataPointer);
-        if (sp->ParameterNumber >= NUM_PARAMS) return FF_FAIL;
+        if (!inst) return MixUInt(FF_FAIL);
+        auto* sp = static_cast<SetParameterStruct*>(ihd->dataPointer);
+        if (sp->ParameterNumber >= NUM_PARAMS) return MixUInt(FF_FAIL);
         memcpy(&inst->p[sp->ParameterNumber], &sp->NewParameterValue, 4);
-        return FF_SUCCESS;
+        return MixUInt(FF_SUCCESS);
     }
 
     case FF_GETPARAMETER: {
-        auto* ihd = reinterpret_cast<InstanceHandledDataStruct*>(inputValue);
+        auto* ihd = static_cast<InstanceHandledDataStruct*>(input.PointerValue);
         ZDepthDOF* inst = FindInst(ihd->instanceID);
-        if (!inst) return FF_FAIL;
-        uint32_t idx = (uint32_t)(uintptr_t)ihd->dataPointer;
-        if (idx >= NUM_PARAMS) return FF_FAIL;
-        uint32_t r; memcpy(&r, &inst->p[idx], 4); return r;
+        if (!inst) return MixUInt(FF_FAIL);
+        uint32_t idx = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(ihd->dataPointer));
+        if (idx >= NUM_PARAMS) return MixUInt(FF_FAIL);
+        uint32_t r; memcpy(&r, &inst->p[idx], 4);
+        return MixUInt(r);
     }
 
     default:
-        return FF_UNSUPPORTED;
+        return MixUInt(FF_UNSUPPORTED);
     }
 }
