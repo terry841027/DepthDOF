@@ -1,0 +1,28 @@
+name: Build ZDepthDOF.dll
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+        working-directory: ZDepthDOF
+
+      - name: Build
+        run: cmake --build build --config Release
+        working-directory: ZDepthDOF
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZDepthDOF-dll
+          path: ZDepthDOF/build/Release/ZDepthDOF.dll
