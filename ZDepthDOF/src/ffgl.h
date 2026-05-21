@@ -20,9 +20,11 @@
 #define FF_TYPE_STANDARD    0x10000000  // 0-1 float knob
 #define FF_TYPE_BOOLEAN     0x01000000  // checkbox (0 or 1)
 
-// ── Capability codes ───────────────────────────────────────────────────────
-#define FF_CAP_PROCESSOPENGL  17
-#define FF_CAP_SETTIME        18
+// ── Capability codes (match official FFGL SDK exactly) ────────────────────
+#define FF_CAP_SETTIME        4
+#define FF_CAP_PROCESSOPENGL  5
+#define FF_CAP_MINIMUM_INPUT_FRAMES 10
+#define FF_CAP_MAXIMUM_INPUT_FRAMES 11
 
 // ── Function codes for plugMain ────────────────────────────────────────────
 #define FF_GETINFO              0
