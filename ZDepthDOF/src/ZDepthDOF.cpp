@@ -287,8 +287,10 @@ FFMixed __stdcall plugMain(uint32_t code, FFMixed input) {
             ? MixUInt(s_types[input.UIntValue]) : MixUInt(FF_FAIL);
 
     case FF_GETPLUGINCAPS:
-        if (input.UIntValue == FF_CAP_PROCESSOPENGL) return MixUInt(FF_SUPPORTED);
-        if (input.UIntValue == FF_CAP_SETTIME)       return MixUInt(FF_NOTSUPPORTED);
+        if (input.UIntValue == FF_CAP_PROCESSOPENGL)        return MixUInt(FF_SUPPORTED);
+        if (input.UIntValue == FF_CAP_SETTIME)              return MixUInt(FF_NOTSUPPORTED);
+        if (input.UIntValue == FF_CAP_MINIMUM_INPUT_FRAMES) return MixUInt(1);
+        if (input.UIntValue == FF_CAP_MAXIMUM_INPUT_FRAMES) return MixUInt(1);
         return MixUInt(FF_UNSUPPORTED);
 
     case FF_INITIALISE:
